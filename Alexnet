@@ -1,0 +1,136 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "30a907ad",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import torch\n",
+    "import matplotlib.pyplot as plt\n",
+    "from torchvision import transforms\n",
+    "from torchvision import datasets\n",
+    "from torch.utils.data import DataLoader\n",
+    "import torch.optim as optim \n",
+    "from torchsummary import summary"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "0fcc9f0a",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Alexnet(\n",
+       "  (conv1): Conv2d(1, 96, kernel_size=(11, 11), stride=(4, 4), padding=(1, 1))\n",
+       "  (conv2): Conv2d(96, 256, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))\n",
+       "  (conv3): Conv2d(256, 384, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))\n",
+       "  (conv4): Conv2d(384, 384, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))\n",
+       "  (conv5): Conv2d(384, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))\n",
+       "  (linear1): Linear(in_features=6400, out_features=4096, bias=True)\n",
+       "  (linear2): Linear(in_features=4096, out_features=4096, bias=True)\n",
+       "  (linear3): Linear(in_features=4096, out_features=10, bias=True)\n",
+       "  (pooling): MaxPool2d(kernel_size=3, stride=3, padding=1, dilation=1, ceil_mode=False)\n",
+       "  (relu): ReLU()\n",
+       "  (dropout): Dropout(p=0.5, inplace=False)\n",
+       "  (flatten): Flatten(start_dim=1, end_dim=-1)\n",
+       ")"
+      ]
+     },
+     "execution_count": 2,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    " #构建模型\n",
+    "class Alexnet(torch.nn.Module):\n",
+    "    def __init__(self):\n",
+    "        super(Alexnet, self).__init__()\n",
+    "        #第一层卷积\n",
+    "        #输入通道为单通道，输出通道数为96\n",
+    "        #使用11*11的卷积核size来捕捉对象，步长为4，填充1\n",
+    "        self.conv1 = torch.nn.Conv2d(1,96,kernel_size=11,stride=4,padding=1)\n",
+    "        #第二层卷积\n",
+    "        #输入通道为96，输出通道为256\n",
+    "        self.conv2 = torch.nn.Conv2d(96, 256, kernel_size=5, padding=2)\n",
+    "        #第三层卷积\n",
+    "        self.conv3 = torch.nn.Conv2d(256, 384, kernel_size=3, padding=1)\n",
+    "        #第四层卷积\n",
+    "        self.conv4 = torch.nn.Conv2d(384, 384, kernel_size=3, padding=1)\n",
+    "        #第五层卷积\n",
+    "        self.conv5 = torch.nn.Conv2d(384, 256, kernel_size=3, padding=1)\n",
+    "        #全连接第一层\n",
+    "        self.linear1 = torch.nn.Linear(256 * 5 * 5, 4096)\n",
+    "        #全连接第二层\n",
+    "        self.linear2 = torch.nn.Linear(4096, 4096)\n",
+    "        #全连接第三层\n",
+    "        #输出层\n",
+    "        self.linear3 = torch.nn.Linear(4096, 10)\n",
+    "        #最大池化层\n",
+    "        self.pooling = torch.nn.MaxPool2d(kernel_size=3, padding=1)\n",
+    "        #激活函数\n",
+    "        self.relu = torch.nn.ReLU()\n",
+    "        #dropout层\n",
+    "        self.dropout = torch.nn.Dropout(p=0.5)\n",
+    "        #flatten\n",
+    "        self.flatten = torch.nn.Flatten()\n",
+    "    \n",
+    "#前馈    \n",
+    "    def forward(self, x):\n",
+    "        x = self.pooling(self.relu(self.conv1(x)))\n",
+    "        x = self.pooling(self.relu(self.conv2(x)))\n",
+    "        x = self.relu(self.conv3(x))\n",
+    "        x = self.relu(self.conv4(x))\n",
+    "        x = self.flatten(self.pooling(self.relu(self.conv5(x))))\n",
+    "        x = self.dropout(self.relu(self.linear1(x)))\n",
+    "        x = self.dropout(self.relu(self.linear2(x)))\n",
+    "        x = self.relu(self.linear3(x))\n",
+    "        return x\n",
+    "model = Alexnet()\n",
+    "\n",
+    "#调用显卡\n",
+    "device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')\n",
+    "model.to(device)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "550f2e21",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#交叉熵损失函数（自带softmax方法）\n",
+    "Loss = torch.nn.CrossEntropyLoss()\n",
+    "#优化器（随机梯度下降）\n",
+    "Optim = torch.optim.SGD(model.parameters(),lr=0.01,momentum=0.5)"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.15"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
